@@ -1,7 +1,4 @@
 <script>
-    const BASE_PITCH = 1.0;
-    const BASE_RATE = 1.0;
-
     let isMediaRecorderSupported = "MediaRecorder" in window;
     let isMediaDevicesSupported = navigator.mediaDevices && navigator.mediaDevices.enumerateDevices;
 
@@ -14,6 +11,7 @@
 
     let mediaRecorder;
     let isRecording = false;
+    let currentConstraints = [];
 
     async function initialize() {
         if (!isMediaRecorderSupported || !isMediaDevicesSupported) {
@@ -32,6 +30,20 @@
         }
 
         selectedDeviceId = availableOutputDevices[0].deviceId;
+
+        let supportedContraints = navigator.mediaDevices.getSupportedConstraints() || {};
+        const AUDIO_INPUT_CONSTRAINTS = [
+            "autoGainControl",
+            "echoCancellation",
+            "noiseSuppression"
+        ];
+
+        currentConstraints = AUDIO_INPUT_CONSTRAINTS.reduce((acc, constraintName) => {
+            if (supportedContraints[constraintName]) {
+                acc.push({constraintName: constraintName, enabled: true});
+            }
+            return acc;
+        }, []);
     }
 
     initialize();
@@ -42,13 +54,18 @@
         }
 
         let chunks = [];
-        const constraints = {audio: {deviceId: {exact: selectedDeviceId}}};
+        const constraints = currentConstraints.reduce((acc, constraint) => {
+            acc[constraint.constraintName] = constraint.enabled;
+            return acc;
+        }, {
+            audio: {deviceId: {exact: selectedDeviceId}}
+        });
 
         let stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         mediaRecorder = new MediaRecorder(stream, {
             mimeType: mimeType,
-            bitsPerSecond: 256 * 8 * 1024
+            bitsPerSecond: 128000
         });
 
         mediaRecorder.ondataavailable = (event) => {
@@ -74,13 +91,17 @@
     }
 
     function stopRecording() {
-        if (mediaRecorder.state === "recording") {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
         }
     }
 
     function saveData(blob) {
-        let fileName = `audio_${fileCounter}.${fileExt}`;
+        let fileConstraints = currentConstraints.reduce((acc, constraint) => {
+            acc += `${constraint.constraintName}_${constraint.enabled}_`;
+            return acc;
+        }, "");
+        let fileName = `audio_${fileConstraints}${fileCounter}.${fileExt}`;
         let blobUrl = URL.createObjectURL(blob);
         let a = document.createElement("a");
         document.body.appendChild(a);
@@ -107,6 +128,16 @@
                     {/each}
                 </select>
             </label>
+        </div>
+
+        <div class="section flex-column">
+            <div>Enable / Disable Media Constraints</div>
+            {#each currentConstraints as constraint}
+                <label>
+                    <input type=checkbox bind:checked={constraint.enabled} class="mr-5">
+                    <span class="text-label">{constraint.constraintName}</span>
+                </label>
+            {/each}
         </div>
 
         <div class="section justify-content-center confirm">
