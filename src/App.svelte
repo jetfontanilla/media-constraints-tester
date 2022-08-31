@@ -6,9 +6,6 @@
     let selectedDeviceId = "";
     let availableOutputDevices = [];
 
-    let fileExt;
-    let mimeType;
-
     const opusWebm = "audio/webm; codecs=opus";
     const opusOgg = "audio/ogg; codecs=opus";
 
@@ -16,20 +13,35 @@
     let isRecording = false;
     let currentConstraints = [];
 
+    function getSupportedMimeType() {
+        if (MediaRecorder.isTypeSupported(opusOgg)) {
+            return {
+                fileExt: "ogg",
+                mimeType: opusOgg
+            };
+        }
+
+        if (MediaRecorder.isTypeSupported(opusWebm)) {
+            return {
+                fileExt: "webm",
+                mimeType: opusWebm
+            };
+        }
+
+        return {
+            fileExt: "mp4",
+            mimeType: "audio/mp4"
+        }
+    }
+
+    let {fileExt, mimeType} = getSupportedMimeType();
+
     async function initialize() {
         if (!isMediaRecorderSupported || !isMediaDevicesSupported) {
             return;
         }
-        if (MediaRecorder.isTypeSupported(opusWebm)) {
-            fileExt = "webm";
-            mimeType = "audio/webm; codecs=opus";
-        } else if (MediaRecorder.isTypeSupported(opusOgg)) {
-            fileExt = "ogg";
-            mimeType = "audio/ogg; codecs=opus";
-        } else {
-            fileExt = "mp4";
-            mimeType = "audio/mp4";
-        }
+
+        
         await navigator.mediaDevices.getUserMedia({audio: true});
         let devices = await navigator.mediaDevices.enumerateDevices();
         availableOutputDevices = devices.filter(device => device.kind === "audioinput");

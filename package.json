@@ -1,5 +1,5 @@
 {
-  "name": "speech-synthesis-tts-demo",
+  "name": "media-constraints-tester",
   "version": "1.0.0",
   "scripts": {
     "build": "rollup -c",
