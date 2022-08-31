@@ -12,7 +12,7 @@ npm run build
 To develop and run this code locally:
 
 ```bash
-npm install && npm run update
+npm install && npm update
 npm run dev
 ```
 

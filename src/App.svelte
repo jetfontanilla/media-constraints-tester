@@ -6,8 +6,11 @@
     let selectedDeviceId = "";
     let availableOutputDevices = [];
 
-    let fileExt = "webm";
-    let mimeType = "audio/webm; codecs=opus";
+    let fileExt;
+    let mimeType;
+
+    const opusWebm = "audio/webm; codecs=opus";
+    const opusOgg = "audio/ogg; codecs=opus";
 
     let mediaRecorder;
     let isRecording = false;
@@ -17,9 +20,15 @@
         if (!isMediaRecorderSupported || !isMediaDevicesSupported) {
             return;
         }
-        if (!MediaRecorder.isTypeSupported("audio/webm; codecs=opus")) {
+        if (MediaRecorder.isTypeSupported(opusWebm)) {
+            fileExt = "webm";
+            mimeType = "audio/webm; codecs=opus";
+        } else if (MediaRecorder.isTypeSupported(opusOgg)) {
             fileExt = "ogg";
             mimeType = "audio/ogg; codecs=opus";
+        } else {
+            fileExt = "mp4";
+            mimeType = "audio/mp4";
         }
         await navigator.mediaDevices.getUserMedia({audio: true});
         let devices = await navigator.mediaDevices.enumerateDevices();
