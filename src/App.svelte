@@ -11,7 +11,9 @@
 
     let mediaRecorder;
     let isRecording = false;
+    let chunked = false;
     let currentConstraints = [];
+    let timestamp;
 
     function getSupportedMimeType() {
         if (MediaRecorder.isTypeSupported(opusOgg)) {
@@ -74,6 +76,9 @@
             isOutputStreamNotSupported = true;
         }
 
+        timestamp = Date.now();
+        fileCounter = 0;
+
         let chunks = [];
         const constraints = currentConstraints.reduce((acc, constraint) => {
             acc[constraint.constraintName] = constraint.enabled;
@@ -93,21 +98,33 @@
             if (event.data.size > 0) {
                 chunks.push(event.data);
             }
+            if (chunked) {
+                const blob = new Blob(
+                    [event.data],
+                    {type: mimeType}
+                );
+                saveData(blob);
+                fileCounter++;
+            }
         };
         mediaRecorder.onstop = () => {
-            let blob = new Blob(
-                    chunks,
-                    {type: mimeType}
-            );
             isRecording = false;
             stream.getAudioTracks().forEach(track => track.stop());
+            if (chunked) {
+                return;
+            }
+            const blob = new Blob(
+                chunks,
+                {type: mimeType}
+            );
             saveData(blob);
         };
         mediaRecorder.onerror = (error) => {
             console.log(error);
         };
 
-        mediaRecorder.start();
+        const AUDIO_FRAME_SIZE = 240;
+        mediaRecorder.start(chunked ? AUDIO_FRAME_SIZE : undefined);
         isRecording = true;
     }
 
@@ -118,11 +135,10 @@
     }
 
     function saveData(blob) {
-        let fileConstraints = currentConstraints.reduce((acc, constraint) => {
-            acc += `${constraint.constraintName}_${constraint.enabled}_`;
-            return acc;
-        }, "");
-        let fileName = `audio_${fileConstraints}${fileCounter}.${fileExt}`;
+        let fileConstraints = currentConstraints.map(constraint => {
+            return `${constraint.constraintName.substring(0, 1)}_${constraint.enabled ? 1 : 0}`;
+        }).join("_");
+        let fileName = `audio_${timestamp}_${fileConstraints}_${fileCounter}${chunked ? ".chunk" : ""}.${fileExt}`;
         let blobUrl = URL.createObjectURL(blob);
         let a = document.createElement("a");
         document.body.appendChild(a);
@@ -159,6 +175,14 @@
                     <span class="text-label">{constraint.constraintName}</span>
                 </label>
             {/each}
+        </div>
+
+        <div class="section flex-column">
+            <div>Chunked Streaming?</div>
+            <label>
+                <input type=checkbox bind:checked={chunked} class="mr-5">
+                <span class="text-label">Chunked 240b</span>
+            </label>
         </div>
 
         <div class="section justify-content-center confirm">
